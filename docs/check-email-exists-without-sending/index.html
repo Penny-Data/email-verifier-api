@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to Check if an Email Address Exists Without Sending an Email (What You Can Actually Know)</title>
+<meta name="description" content="Syntax, domain and MX checks you can do in 30 lines of Python without sending mail, why SMTP mailbox probing is unreliable, and how to run a bulk list through a hosted no-SMTP validator.">
+<link rel="canonical" href="https://jjlarsensa.github.io/email-verifier-api/check-email-exists-without-sending/">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "HowTo", "name": "How to Check if an Email Address Exists Without Sending an Email (What You Can Actually Know)", "description": "Syntax, domain and MX checks you can do in 30 lines of Python without sending mail, why SMTP mailbox probing is unreliable, and how to run a bulk list through a hosted no-SMTP validator.", "step": [{"@type": "HowToStep", "position": 1, "name": "Check the address syntax", "text": "Check the address syntax"}, {"@type": "HowToStep", "position": 2, "name": "Look up the domain's MX records (fall back to A)", "text": "Look up the domain's MX records (fall back to A)"}, {"@type": "HowToStep", "position": 3, "name": "Flag disposable and role addresses", "text": "Flag disposable and role addresses"}, {"@type": "HowToStep", "position": 4, "name": "Understand why SMTP probing is unreliable", "text": "Understand why SMTP probing is unreliable"}, {"@type": "HowToStep", "position": 5, "name": "Validate a whole list through the hosted actor", "text": "Validate a whole list through the hosted actor"}]}</script>
+<style>body{font:16px/1.6 system-ui,sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem;color:#222}pre{background:#f4f4f4;padding:1rem;overflow:auto;border-radius:6px}code{background:#f4f4f4;padding:0 .25rem}pre code{padding:0}a.btn{display:inline-block;background:#0a58ca;color:#fff;padding:.6rem 1.2rem;border-radius:6px;text-decoration:none}footer{margin-top:3rem;color:#666;font-size:.9rem}</style>
+</head>
+<body>
+<h1>How to Check if an Email Address Exists Without Sending an Email (What You Can Actually Know)</h1>
+<h2>Three levels of &quot;exists&quot;</h2>
+<ul><li><strong>Syntax</strong>: is it shaped like an address? Fully knowable offline.</li><li><strong>Domain</strong>: does the part after <code>@</code> exist and accept mail (MX records, or an A record as fallback)? Knowable with a DNS query, no email sent.</li><li><strong>Mailbox</strong>: does that specific user exist at that domain? <strong>Not provable without contacting the mail server</strong>, and often not even then.</li></ul>
+<p>Anyone selling a flat "this inbox exists" answer without sending mail is either probing SMTP (see below) or guessing. What you can do for free is rule out the addresses that cannot possibly work.</p>
+<h2>Syntax + MX check in Python</h2>
+<pre><code>import re, sys, dns.resolver
+EMAIL = re.compile(r&quot;^[^@\s]+@([^@\s]+\.[^@\s]+)$&quot;)
+def check(addr):
+    m = EMAIL.match(addr)
+    if not m: return &quot;bad-syntax&quot;
+    domain = m.group(1).lower()
+    try:
+        dns.resolver.resolve(domain, &quot;MX&quot;); return &quot;mx-ok&quot;
+    except dns.resolver.NoAnswer:
+        try: dns.resolver.resolve(domain, &quot;A&quot;); return &quot;a-fallback&quot;
+        except Exception: return &quot;no-mail-host&quot;
+    except Exception: return &quot;no-domain&quot;
+for a in sys.argv[1:]: print(a, check(a))
+</code></pre>
+<p>Run with <code>pip install dnspython</code> then <code>python mx.py a@gmail.com b@nonexistent-zzq91.com bad</code>. Output when tested: <code>mx-ok</code>, <code>no-domain</code>, <code>bad-syntax</code>. A domain with no MX but an A record falls back to implicit-MX behaviour per RFC 5321, hence the <code>a-fallback</code> branch.</p>
+<h2>Disposable and role addresses</h2>
+<p>Two more offline signals. <strong>Disposable domains</strong> (mailinator and similar) accept mail but are throwaway: keep a set of known domains from a public, maintained list and test <code>domain in DISPOSABLE</code>. <strong>Role addresses</strong> (<code>info@</code>, <code>admin@</code>, <code>support@</code>) usually reach a team, not a person: test the local part against a small set. Both lists go stale, so refresh them.</p>
+<pre><code>DISPOSABLE = {&quot;mailinator.com&quot;, &quot;guerrillamail.com&quot;, &quot;10minutemail.com&quot;}  # load a maintained list instead
+ROLES = {&quot;info&quot;, &quot;admin&quot;, &quot;support&quot;, &quot;sales&quot;, &quot;postmaster&quot;, &quot;abuse&quot;}
+
+def flags(addr):
+    local, _, domain = addr.lower().partition(&quot;@&quot;)
+    return {&quot;disposable&quot;: domain in DISPOSABLE, &quot;role&quot;: local in ROLES}</code></pre>
+<h2>Why SMTP probing is unreliable</h2>
+<p>The classic trick connects to the MX host and issues <code>RCPT TO</code> to see whether the recipient is rejected. In practice:</p>
+<ul><li><strong>Catch-all domains</strong> accept every recipient, so every address looks valid.</li><li><strong>Outbound port 25 is blocked</strong> by most cloud providers and many ISPs.</li><li><strong>Big providers</strong> throttle, greylist or give non-committal answers to probes.</li><li><strong>Reputation risk</strong>: repeated probing from one IP can get it blocklisted, which then hurts your real mail.</li></ul>
+<p>Treat an SMTP "valid" as a hint, never a guarantee. The honest approach is to filter out everything provably bad (syntax, dead domains, disposable) and let real delivery or a double opt-in confirm the rest.</p>
+<h2>Bulk: a whole list at once</h2>
+<p>Disclosure: I built an Apify actor that runs these checks (syntax, MX, disposable, role, free-provider flags, typo suggestions) on lists, <a href="https://apify.com/pennydata/bulk-email-validator-no-smtp">pennydata/bulk-email-validator-no-smtp</a>. It deliberately does no SMTP probing, so it does not tell you a mailbox exists. Pay-per-event: $0.0008 per email validated (read live from the actor API on 2026-10-20; check the actor page for the current price); rows with unknown DNS status are not charged.</p>
+<pre><code>import os, sys, requests
+
+token = os.getenv(&quot;APIFY_TOKEN&quot;)
+if not token:
+    sys.exit(&quot;Error: APIFY_TOKEN is not set. Get a token at https://console.apify.com/account/integrations&quot;)
+
+resp = requests.post(
+    &quot;https://api.apify.com/v2/acts/pennydata~bulk-email-validator-no-smtp/run-sync-get-dataset-items&quot;,
+    params={&quot;token&quot;: token},
+    json={&quot;emails&quot;: [&quot;jane@gmail.com&quot;, &quot;info@example.com&quot;, &quot;bob@mailinator.com&quot;, &quot;not-an-email&quot;]},
+    timeout=300,
+)
+if not resp.ok:
+    sys.exit(f&quot;Error: Apify API returned {resp.status_code}: {resp.text[:300]}&quot;)
+for r in resp.json():
+    print(r.get(&quot;email&quot;) or r.get(&quot;input&quot;), r.get(&quot;status&quot;), r.get(&quot;reason&quot;) or &quot;&quot;, sep=&quot;\t&quot;)
+</code></pre>
+<p>Needs <code>APIFY_TOKEN</code>; exits with an error message if it is not set.</p>
+<p><a class="btn" href="https://apify.com/pennydata/bulk-email-validator-no-smtp">Hosted option: pennydata/bulk-email-validator-no-smtp on Apify</a></p>
+<footer>Written with AI (Claude). The author also built the linked Apify actor. Code examples were run on 2026-10-20; prices are read from the live actor API and may change.</footer>
+</body>
+</html>
