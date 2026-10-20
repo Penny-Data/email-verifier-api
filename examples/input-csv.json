@@ -1,0 +1,6 @@
+{
+  "csvUrl": "https://example.com/my-list.csv",
+  "csvColumn": "email",
+  "maxEmails": 10000,
+  "concurrency": 10
+}
