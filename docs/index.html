@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bulk Email Verifier API - validate email lists without SMTP</title>
+<meta name="description" content="Bulk email verifier API: email syntax, MX and disposable check without SMTP probing. $0.80 per 1,000 emails, DNS failures free. curl, Node and Python examples.">
+<link rel="canonical" href="https://jjlarsensa.github.io/email-verifier-api/">
+<style>
+body{font:16px/1.6 system-ui,sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem;color:#222}
+pre{background:#f4f4f4;padding:1rem;overflow:auto;border-radius:6px}
+code{background:#f4f4f4;padding:0 .25rem}
+table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:.4rem .8rem;text-align:left}
+a.btn{display:inline-block;background:#0a58ca;color:#fff;padding:.6rem 1.2rem;border-radius:6px;text-decoration:none}
+</style>
+</head>
+<body>
+<h1>Bulk Email Verifier API (no SMTP)</h1>
+<p>A <strong>bulk email verifier API</strong> to <strong>validate an email list without SMTP</strong>. Per address: syntax, MX/DNS records, disposable domains, role accounts, free providers and typo suggestions. Pay per checked email; DNS failures are not billed.</p>
+<p><a class="btn" href="https://apify.com/pennydata/bulk-email-validator-no-smtp">Try it on Apify: pennydata/bulk-email-validator-no-smtp</a></p>
+
+<h2>What "no SMTP" means</h2>
+<p>It never contacts the recipient's mail server. It does an email syntax, MX and disposable check; it cannot confirm that a specific mailbox exists and does not claim to.</p>
+
+<h2>Pricing</h2>
+<table>
+<tr><th>Event</th><th>Price (read from the actor page 2026-10-20)</th></tr>
+<tr><td>Email validated</td><td>$0.0008 each ($0.80 / 1,000)</td></tr>
+</table>
+<p>The <a href="https://apify.com/pennydata/bulk-email-validator-no-smtp">actor page</a> is the source of truth for current prices.</p>
+
+<h2>curl</h2>
+<pre>export APIFY_TOKEN=your_token_here
+curl -X POST "https://api.apify.com/v2/acts/pennydata~bulk-email-validator-no-smtp/run-sync-get-dataset-items?token=$APIFY_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"emails":["jane@gmail.com","info@example.com","bob@mailinator.com","x@gmial.com","not-an-email"]}'</pre>
+
+<h2>Node.js (18+)</h2>
+<pre>const res = await fetch(
+  `https://api.apify.com/v2/acts/pennydata~bulk-email-validator-no-smtp/run-sync-get-dataset-items?token=${process.env.APIFY_TOKEN}`,
+  { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emails: ['jane@gmail.com', 'bob@mailinator.com'] }) },
+);
+console.log(await res.json());</pre>
+
+<h2>Python</h2>
+<pre>import os, requests
+
+resp = requests.post(
+    "https://api.apify.com/v2/acts/pennydata~bulk-email-validator-no-smtp/run-sync-get-dataset-items",
+    params={"token": os.environ["APIFY_TOKEN"]},
+    json={"emails": ["jane@gmail.com", "bob@mailinator.com"]},
+    timeout=300,
+)
+print(resp.json())</pre>
+
+<h2>Input options</h2>
+<p><code>emails</code>, <code>csvUrl</code>, <code>csvColumn</code>, <code>maxEmails</code>, <code>concurrency</code>. See the <a href="https://github.com/jjlarsensa/email-verifier-api#input-reference">README</a> and the <a href="https://apify.com/pennydata/bulk-email-validator-no-smtp/input-schema">full schema</a>.</p>
+
+<h2>About</h2>
+<p>Built and maintained with an AI-assisted workflow (Claude), operated by the owner of the jjlarsensa GitHub account. MIT licensed. <a href="https://github.com/jjlarsensa/email-verifier-api">Source on GitHub</a>.</p>
+</body>
+</html>
