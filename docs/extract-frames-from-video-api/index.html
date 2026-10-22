@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Extract frames from a video URL via API (curl and Node examples)</title>
+<meta name="description" content="Extract frames from video file URLs with one API call: every N seconds, N evenly spaced, or at scene changes. curl and Node.js examples for the Apify actor pennydata/video-frame-extractor, $0.0008 per frame.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<main style="max-width:760px;margin:2em auto;padding:0 1em;font-family:system-ui,sans-serif;line-height:1.5">
+<h1>Extract frames from a video URL via API</h1>
+<p>Send direct links to video files (mp4, webm, mov, mkv) and get back still images: one every N seconds, N evenly spaced frames, or one at each scene change. It runs on the Apify actor <a href="https://apify.com/pennydata/video-frame-extractor">pennydata/video-frame-extractor</a> (ffmpeg inside) and you call it with a single HTTP request, with no ffmpeg install on your side. An optional contact sheet gives one grid image per video.</p>
+<p>Why this page: "extract frames from video" is a query people run on the Apify Store, where the top rival actor (kantolabs) showed about 119 users and 92 monthly users when we last read the Store API on 2026-10-21. This is a cheaper pay-per-frame option with a built-in spend cap.</p>
+
+<h2>Price</h2>
+<p>$0.0008 per frame saved (100 frames = $0.08). The contact sheet is free. Videos that fail to download or decode are not charged. You are billed by Apify to your own Apify account; Apify platform usage may apply on top, so check the actor page for current pricing before big runs. Use <code>maxCostUsd</code> to cap a run.</p>
+
+<h2>Honest notes</h2>
+<p>It needs a link to the video <em>file</em>. YouTube, Vimeo, TikTok and other page links are not supported. Only process videos you have the right to use. Scene mode relies on ffmpeg's scene score, so tune <code>sceneThreshold</code> (default 0.3) for your footage; if no scene change is found the video is reported as failed and not charged.</p>
+
+<h2>curl</h2>
+<p>Get your token at <a href="https://console.apify.com/account/integrations">console.apify.com/account/integrations</a> and export it as <code>APIFY_TOKEN</code>.</p>
+<pre><code>curl -sS -X POST \
+  "https://api.apify.com/v2/acts/pennydata~video-frame-extractor/run-sync-get-dataset-items" \
+  -H "Authorization: Bearer $APIFY_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "videoUrls": ["https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"],
+    "mode": "interval",
+    "intervalSeconds": 2,
+    "format": "jpg",
+    "contactSheet": true,
+    "maxCostUsd": 0.5
+  }'</code></pre>
+
+<h2>Node.js (18+, no dependencies)</h2>
+<pre><code>const res = await fetch(
+  "https://api.apify.com/v2/acts/pennydata~video-frame-extractor/run-sync-get-dataset-items",
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.APIFY_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      videoUrls: ["https://example.com/clip.mp4"],
+      mode: "count",      // "interval" | "count" | "scene"
+      frameCount: 8,      // used by mode "count"
+      format: "jpg",      // "jpg" | "png"
+      maxWidth: 1280,
+      maxCostUsd: 0.5,
+    }),
+  }
+);
+if (!res.ok) throw new Error(`Apify ${res.status}: ${await res.text()}`);
+for (const row of await res.json()) {
+  if (row.status !== "ok") console.error(row.videoUrl, row.status);
+  else console.log(row.type, row.timestampSec, row.frameUrl);
+}</code></pre>
+
+<h2>Output</h2>
+<p>One dataset row per frame: <code>videoUrl</code>, <code>status</code>, <code>type</code> (<code>frame</code> or <code>contact-sheet</code>), <code>timestampSec</code>, <code>frameUrl</code> (public URL of the image in the run's key-value store), <code>width</code>, <code>height</code>, <code>durationSec</code>. Failed or skipped videos get a row with <code>status</code> "failed" or "skipped" and a reason. The synchronous endpoint has a time limit, so for long or many videos start the run with the asynchronous endpoint (see the <a href="https://docs.apify.com/api/v2">Apify API docs</a>).</p>
+
+<h2>Limits</h2>
+<p>Interval frames are exact to the nearest decodable frame. Up to 500 frames per video in count mode, 1000 per video in any mode, width up to 3840 px, files up to 1.5 GB. Private network addresses are blocked. Frame URLs follow your Apify storage retention.</p>
+
+<h2>Disclosure</h2>
+<p>I am the publisher of this actor, so I earn money when you use it. This page and its examples were written with AI (Claude) and published by an automated account on behalf of its operator. The snippets follow the actor's input schema but have not been run from this page.</p>
+</main>
+</body>
+</html>
