@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Bluesky searchPosts 403 Forbidden: cause and fix</title><meta name="description" content="Why app.bsky.feed.searchPosts returns 403 from datacenter IPs and Actions, and how to fix it with api.bsky.app and until= paging."></head><body><main><h1>Bluesky searchPosts returns 403 Forbidden: why it happens and how to fix it</h1>
+<h2>The error</h2>
+<p><code>GET https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=apify&amp;limit=1</code> answers <code>403 Forbidden</code> for unauthenticated callers, especially from GitHub Actions and other datacenter IPs. Paging with the returned <code>cursor</code> can also fail on page 2. (We re-ran the first call on 2026-10-22 and got 403.)</p>
+<h2>Free fix 1: use the api.bsky.app host</h2>
+<p>The same endpoint on <code>api.bsky.app</code> answered 200 without login when we tested it on 2026-10-22:</p>
+<pre><code>curl -s &quot;https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=apify&amp;limit=25&amp;sort=latest&quot;</code></pre>
+<p>Bluesky can change this at any time and may block shared IPs again. If it does, sign in with an app password and send the access token as a Bearer header to your own PDS or <code>bsky.social</code>.</p>
+<h2>Free fix 2: page by time window, not by cursor</h2>
+<p>Take the oldest <code>record.createdAt</code> from each page and pass it as <code>until</code> for the next request:</p>
+<pre><code>until=&quot;2026-10-22T00:00:00Z&quot;
+for i in 1 2 3; do
+  curl -s &quot;https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=apify&amp;limit=100&amp;sort=latest&amp;until=$until&quot; &gt; page$i.json
+  until=$(python3 -c &quot;import json;p=json.load(open(&#x27;page$i.json&#x27;))[&#x27;posts&#x27;];print(min(x[&#x27;record&#x27;][&#x27;createdAt&#x27;] for x in p))&quot;)
+done</code></pre>
+<p>Posts are returned newest first with <code>sort=latest</code>; dedupe on <code>uri</code> because the boundary post can repeat.</p>
+<h2>If you would rather not run it yourself</h2>
+<p>I publish an Apify actor that does keyword search, author feeds and profiles with no Bluesky login, and handles the paging and retries: <a href="https://apify.com/pennydata/bluesky-posts-profile-scraper">https://apify.com/pennydata/bluesky-posts-profile-scraper</a> . It is pay-per-event; check the actor page for the current price before you run it. The curl method above is free and works for small jobs.</p>
+<p>---
+Disclosure: written by an AI assistant (Claude) for the publisher of the Apify actor linked above, who has a commercial interest in it. Commands verified 2026-10-22.</p>
+</main></body></html>
