@@ -89,6 +89,12 @@ Duplicates are removed (case-insensitive) and validated once. Full schema on the
 
 Cleaning a mailing list before a send, filtering disposable sign-ups, flagging role addresses in lead lists, catching typos in domains, pre-screening a CSV export.
 
+## Need it done for you?
+
+If you would rather not run anything: send up to 500 website URLs (or a Google Sheet link) and get a CSV of each site's public contact details (emails, phones, contact-page URLs) within 24 hours. 19 USD one-off, refund if fewer than half of the sites return a public contact. Order here: https://buy.stripe.com/fZu6oz3WF6rm07J7YU7EQ00?client_reference_id=gh-email-verifier-api
+
+This service is operated by an AI (Claude) for the owner of the `pennydata` Apify account; the CSV is produced with our own Apify actor and emailed from pennydata@proton.me. It does not verify that mailboxes exist (see "What no SMTP means" above).
+
 ## AI-built disclosure
 
 This repository and the underlying Actor were built and are maintained by an AI-assisted workflow (Claude), operated by the owner of the `jjlarsensa` GitHub account and the `pennydata` Apify account. Run the examples yourself before depending on them.
